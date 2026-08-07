@@ -122,3 +122,62 @@ test('the IPv6 space map reports allocation density inside 2000::/3', () => {
   // Anything outside global unicast is off the map rather than clamped to zero.
   assert.equal(bucketOf(6, parseCidr('fe80::/10').base), -1);
 });
+
+/* ------------------------------------------------------- RIR mirror fallback */
+
+test('a registry blocked on its own host is fetched from a mirror', async () => {
+  // The registries carry each other's files. A network that cannot reach
+  // ftp.apnic.net can usually still reach ftp.ripe.net, and the file is the
+  // same either way — without this, one blocked host breaks the whole source.
+  const http = await import('node:http');
+  const sample = 'ripencc|IR|ipv4|2.144.0.0|262144|20110101|allocated|x';
+
+  const server = http.createServer((req, res) => {
+    if (req.url.includes('/blocked/')) return req.socket.destroy();
+    res.writeHead(200, { 'content-type': 'text/plain' });
+    res.end(sample);
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const rir = await import('../src/sources/rir.js');
+  const original = [...rir.REGISTRIES];
+  rir.REGISTRIES.length = 0;
+  rir.REGISTRIES.push(
+    { id: 'ripencc', name: 'RIPE NCC', urls: [`${base}/ripe`] },
+    { id: 'apnic', name: 'APNIC', urls: [`${base}/blocked/apnic`, `${base}/ripe`] },
+    { id: 'gone', name: 'Gone', urls: [`${base}/blocked/a`, `${base}/blocked/b`] },
+  );
+
+  try {
+    const result = await rir.default.fetchCountry('IR', { family: 4, force: true });
+
+    assert.ok(result.nets.length > 0, 'the country still resolves');
+    assert.ok(result.meta.registries.includes('apnic'), 'apnic came back via its mirror');
+    assert.deepEqual(
+      result.meta.failedRegistries.map((f) => f.id),
+      ['gone'],
+      'only the registry with no working source is reported as failed',
+    );
+    assert.equal(result.meta.partial, true);
+  } finally {
+    rir.REGISTRIES.length = 0;
+    rir.REGISTRIES.push(...original);
+    server.close();
+  }
+});
+
+test('every registry lists its own host first and at least one mirror', async () => {
+  const { REGISTRIES } = await import('../src/sources/rir.js');
+  assert.equal(REGISTRIES.length, 5);
+  for (const registry of REGISTRIES) {
+    assert.ok(registry.urls.length >= 2, `${registry.id} needs a fallback`);
+    assert.ok(
+      registry.urls.every((url) => url.startsWith('https://')),
+      `${registry.id} must fetch over HTTPS`,
+    );
+    // Distinct hosts, or the "fallback" would fail with the first one.
+    const hosts = new Set(registry.urls.map((url) => new URL(url).host));
+    assert.equal(hosts.size, registry.urls.length, `${registry.id} repeats a host`);
+  }
+});

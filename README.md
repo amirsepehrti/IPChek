@@ -71,12 +71,16 @@ node src/cli.js export IR --format=mikrotik --family=4 > iran.rsc
 fetch per country. Files are cached on disk with conditional requests, so a re-check that
 finds nothing new costs one HTTP 304.
 
-**On `rir` and unreachable registries.** If one of the five hosts is blocked, every country
-that registry serves comes back empty, which would read as a mass withdrawal. IPChek will not
-record that: a partial fetch is accepted only when it takes nothing away from what is already
-stored — so an unreachable APNIC cannot damage a RIPE-served country's list — and it is never
-accepted as a first recording, where there is nothing to check it against. If your network
-cannot reach all five, stay on `ipverse`; it carries the same data over HTTPS.
+**On `rir` and unreachable registries.** The registries carry each other's files, so each one
+is tried on its own host first and then on two mirrors — a network that cannot reach
+`ftp.apnic.net` can usually still reach `ftp.ripe.net`, and APNIC's file is identical from
+either. Each mirror gets one quick attempt, so a blocked host costs seconds, not minutes.
+
+If a registry is unavailable everywhere, every country it serves comes back empty, which would
+read as a mass withdrawal. IPChek will not record that: a partial fetch is accepted only when
+it takes nothing away from what is already stored — so an unreachable APNIC cannot damage a
+RIPE-served country's list — and it is never accepted as a first recording, where there is
+nothing to check it against. Failing all of that, `ipverse` carries the same data over HTTPS.
 
 ### 2. A watch list that notices changes
 
