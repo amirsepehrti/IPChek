@@ -32,7 +32,11 @@ jobs:
       - name: Check the assembled imports resolve
         run: node scripts/check-static.mjs
 
+      # Turns Pages on the first time this runs, so there is no manual step in
+      # repository settings. Needs Pages to be available on the account's plan.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:

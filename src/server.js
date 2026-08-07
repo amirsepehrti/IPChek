@@ -14,12 +14,33 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '256kb' }));
 
-  // Export URLs are meant to be polled by routers and firewalls from anywhere.
+  /*
+   * Export URLs are meant to be polled by routers and firewalls from anywhere,
+   * so reads are open to every origin. Writes are not.
+   *
+   * Devices fetching a list do not use CORS at all — it is a browser rule — so
+   * opening up the write methods buys nothing and costs something real: any
+   * page a user happens to visit could add or delete watches on an instance it
+   * can reach. Setting API_TOKEN closes that regardless; this makes the default
+   * safe too.
+   */
+  const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
   app.use((req, res, next) => {
-    res.set('access-control-allow-origin', '*');
-    res.set('access-control-allow-headers', 'content-type, authorization');
-    res.set('access-control-allow-methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    const requested = (req.get('access-control-request-method') || req.method).toUpperCase();
+    const isRead = READ_METHODS.has(requested);
+
+    if (isRead) {
+      res.set('access-control-allow-origin', '*');
+      res.set('access-control-allow-headers', 'content-type, authorization');
+      res.set('access-control-allow-methods', 'GET, HEAD, OPTIONS');
+      res.set('access-control-max-age', '86400');
+    }
+    res.set('vary', 'origin, access-control-request-method');
+
+    // A preflight for a write is answered without the headers that would let
+    // the browser proceed.
+    if (req.method === 'OPTIONS') return res.sendStatus(isRead ? 204 : 403);
     next();
   });
 
