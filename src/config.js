@@ -42,7 +42,7 @@ export const config = {
   dataDir,
   cacheDir: path.join(dataDir, 'cache'),
   dbFile: path.join(dataDir, 'ipchek.sqlite'),
-  defaultSource: process.env.SOURCE || 'rir',
+  defaultSource: process.env.SOURCE || 'ipverse',
   syncIntervalMinutes: num(process.env.SYNC_INTERVAL_MINUTES, 360),
   syncOnStart: bool(process.env.SYNC_ON_START, true),
   sourceCacheMinutes: num(process.env.SOURCE_CACHE_MINUTES, 60),

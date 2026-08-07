@@ -392,6 +392,7 @@ router.post('/sync', requireAuth, async (req, res) => {
         family: one,
         force: readBool(req.body?.force, true),
         allowEmpty: readBool(req.body?.allowEmpty, false),
+        allowPartial: readBool(req.body?.allowPartial, false),
         reason: 'manual',
       }),
     );

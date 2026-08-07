@@ -9,8 +9,8 @@ services:
     volumes:
       - ipchek-data:/data
     environment:
-      # Where the ranges come from: rir | ipverse | ipdeny | dbip
-      SOURCE: rir
+      # Where the ranges come from: ipverse | rir | ipdeny | dbip
+      SOURCE: ipverse
       # How often watched countries are re-checked, in minutes
       SYNC_INTERVAL_MINUTES: 360
       SYNC_ON_START: "true"

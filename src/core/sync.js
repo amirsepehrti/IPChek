@@ -20,16 +20,26 @@ const keyOf = (country, source, family) => `${country}:${source}:${family}`;
  * Guards exist because a monitoring tool that reports a phantom "all ranges
  * removed" during a source outage is worse than one that reports nothing.
  */
-export async function syncTarget({ country, source, family, force = false, allowEmpty = false, reason = 'manual' }) {
+export async function syncTarget({
+  country,
+  source,
+  family,
+  force = false,
+  allowEmpty = false,
+  allowPartial = false,
+  reason = 'manual',
+}) {
   const key = keyOf(country, source, family);
   if (inFlight.has(key)) return inFlight.get(key);
 
-  const task = runSync({ country, source, family, force, allowEmpty, reason }).finally(() => inFlight.delete(key));
+  const task = runSync({ country, source, family, force, allowEmpty, allowPartial, reason }).finally(() =>
+    inFlight.delete(key),
+  );
   inFlight.set(key, task);
   return task;
 }
 
-async function runSync({ country, source, family, force, allowEmpty, reason }) {
+async function runSync({ country, source, family, force, allowEmpty, allowPartial, reason }) {
   const provider = getSource(source);
   const startedAt = new Date();
   const previous = store.getDataset(country, source, family);
@@ -41,20 +51,51 @@ async function runSync({ country, source, family, force, allowEmpty, reason }) {
     return recordFailure({ country, source, family, error, detectedAt: startedAt.toISOString() });
   }
 
-  // A partially loaded RIR set silently drops every country served by the
-  // registry that failed, which would look like a mass withdrawal.
-  if (fetched.meta?.partial) {
-    const failed = (fetched.meta.failedRegistries || []).map((f) => f.id).join(', ');
-    const error = new Error(`source "${source}" returned partial data (unreachable: ${failed || 'unknown'})`);
-    return recordFailure({ country, source, family, error, detectedAt: startedAt.toISOString() });
-  }
-
   const rawNets = sortNets(fetched.nets);
   const aggregated = aggregate(rawNets);
   const canonical = aggregated.map(formatCidr);
   const digest = digestOf(canonical);
   const addressCount = countAddresses(aggregated);
   const detectedAt = new Date().toISOString();
+
+  const previousNets = previous ? parsePrefixList(previous.prefixes).nets : [];
+  const diff = previous ? diffNets(aggregate(previousNets), aggregated) : { added: [], removed: [] };
+  const previousAddresses = previous ? BigInt(previous.addressCount) : 0n;
+
+  /*
+   * A registry we could not reach drops every country it serves, which would
+   * read as a mass withdrawal — so a partial fetch is not trusted blindly.
+   *
+   * But it is only dangerous when it takes something away. Most countries are
+   * served by a single registry, so an unreachable APNIC cannot affect a RIPE
+   * country's list at all. When the partial data still covers everything we had
+   * before, nothing was lost and the result is recorded normally; the moment it
+   * would remove a block, we stop and say why. This check runs before the
+   * empty-list guard so an unreachable registry is reported as exactly that,
+   * rather than as a country that lost all its space.
+   */
+  if (fetched.meta?.partial && !allowPartial) {
+    const failed = (fetched.meta.failedRegistries || []).map((f) => f.id).join(', ') || 'unknown';
+    const advice =
+      'If your network cannot reach these hosts, switch the source to "ipverse" — it mirrors the ' +
+      'same registry data over HTTPS from GitHub.';
+
+    if (!previous) {
+      const error = new Error(
+        `source "${source}" could not reach ${failed}, so the first recording of ${country} might be ` +
+          `missing blocks — refusing to save an incomplete baseline. ${advice}`,
+      );
+      return recordFailure({ country, source, family, error, detectedAt });
+    }
+    if (diff.removed.length > 0) {
+      const error = new Error(
+        `source "${source}" could not reach ${failed}, and the result drops ${diff.removed.length} ` +
+          `block(s) from ${country} — refusing, because that is what an unreachable registry looks like. ${advice}`,
+      );
+      return recordFailure({ country, source, family, error, detectedAt });
+    }
+    log.warn(`${country}/v${family}/${source}: ${failed} unreachable but nothing was lost — recording`);
+  }
 
   if (aggregated.length === 0 && previous && previous.prefixCount > 0 && !allowEmpty) {
     const error = new Error(
@@ -97,10 +138,6 @@ async function runSync({ country, source, family, force, allowEmpty, reason }) {
       changedAt: previous.changedAt,
     };
   }
-
-  const previousNets = previous ? parsePrefixList(previous.prefixes).nets : [];
-  const diff = previous ? diffNets(aggregate(previousNets), aggregated) : { added: [], removed: [] };
-  const previousAddresses = previous ? BigInt(previous.addressCount) : 0n;
 
   store.saveDataset({
     country,

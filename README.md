@@ -62,8 +62,8 @@ node src/cli.js export IR --format=mikrotik --family=4 > iran.rsc
 
 | Source | What it is | Best for |
 | --- | --- | --- |
-| `rir` *(default)* | The daily delegation files published by RIPE NCC, ARIN, APNIC, AFRINIC and LACNIC | The authoritative answer to "who was this block allocated to" |
-| `ipverse` | [ipverse/rir-ip](https://github.com/ipverse/rir-ip) — the same RIR data, rebuilt daily, one small file per country over HTTPS | Networks that block the RIR FTP hosts, or when you only track a few countries |
+| `ipverse` *(default)* | [ipverse/rir-ip](https://github.com/ipverse/rir-ip) — the RIR data rebuilt daily, one small file per country over HTTPS | Almost everyone: same allocation data, a few kilobytes per country, and it works on networks that cannot reach the registry FTP hosts |
+| `rir` | The daily delegation files published by RIPE NCC, ARIN, APNIC, AFRINIC and LACNIC | The authoritative original, when you want the registry files themselves and can reach all five |
 | `ipdeny` | [ipdeny.com](https://www.ipdeny.com/ipblocks/) zone files | Matching what existing firewall scripts already use |
 | `dbip` | DB-IP geolocation ranges via [sapics/ip-location-db](https://github.com/sapics/ip-location-db) | Where addresses are *used* rather than who they were allocated to — usually what you want for traffic policy |
 
@@ -71,8 +71,12 @@ node src/cli.js export IR --format=mikrotik --family=4 > iran.rsc
 fetch per country. Files are cached on disk with conditional requests, so a re-check that
 finds nothing new costs one HTTP 304.
 
-If your network blocks the RIR FTP hosts, switch `SOURCE` to `ipverse` — it is the same
-underlying data served from GitHub.
+**On `rir` and unreachable registries.** If one of the five hosts is blocked, every country
+that registry serves comes back empty, which would read as a mass withdrawal. IPChek will not
+record that: a partial fetch is accepted only when it takes nothing away from what is already
+stored — so an unreachable APNIC cannot damage a RIPE-served country's list — and it is never
+accepted as a first recording, where there is nothing to check it against. If your network
+cannot reach all five, stay on `ipverse`; it carries the same data over HTTPS.
 
 ### 2. A watch list that notices changes
 
@@ -160,9 +164,11 @@ conservative about what counts as a change.
 - **An empty response never overwrites a populated list.** If a source returns nothing for a
   country that had ranges yesterday, IPChek records an error and keeps the old data. Pass
   `allowEmpty` if the country really has been emptied.
-- **Partial source data is refused.** With `rir`, if one of the five registries is unreachable,
-  every country it serves would look like it lost all its space. That is reported as an error
-  instead of a mass withdrawal.
+- **Partial source data is judged by what it costs you.** With `rir`, an unreachable registry
+  empties every country it serves. A partial fetch is accepted only when it removes nothing
+  from what is already stored — an unreachable APNIC cannot touch a RIPE-served country — and
+  never as a first recording, where there is nothing to check it against. Anything that would
+  drop a block is an error naming the registry that failed. Pass `allowPartial` to override.
 - **A failed fetch is an error event, never a change.** Stale cached data is used rather than
   none when the network is down.
 
