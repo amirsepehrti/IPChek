@@ -48,7 +48,7 @@ async function runSync({ country, source, family, force, allowEmpty, allowPartia
   try {
     fetched = await provider.fetchCountry(country, { family, force });
   } catch (error) {
-    return recordFailure({ country, source, family, error, detectedAt: startedAt.toISOString() });
+    return recordFailure({ country, source, family, error, detectedAt: startedAt.toISOString(), reason });
   }
 
   const rawNets = sortNets(fetched.nets);
@@ -85,14 +85,14 @@ async function runSync({ country, source, family, force, allowEmpty, allowPartia
         `source "${source}" could not reach ${failed}, so the first recording of ${country} might be ` +
           `missing blocks — refusing to save an incomplete baseline. ${advice}`,
       );
-      return recordFailure({ country, source, family, error, detectedAt });
+      return recordFailure({ country, source, family, error, detectedAt, reason });
     }
     if (diff.removed.length > 0) {
       const error = new Error(
         `source "${source}" could not reach ${failed}, and the result drops ${diff.removed.length} ` +
           `block(s) from ${country} — refusing, because that is what an unreachable registry looks like. ${advice}`,
       );
-      return recordFailure({ country, source, family, error, detectedAt });
+      return recordFailure({ country, source, family, error, detectedAt, reason });
     }
     log.warn(`${country}/v${family}/${source}: ${failed} unreachable but nothing was lost — recording`);
   }
@@ -102,7 +102,7 @@ async function runSync({ country, source, family, force, allowEmpty, allowPartia
       `source returned an empty list for ${country} while ${previous.prefixCount} prefixes are on record — ` +
         'refusing to overwrite. Re-run with allowEmpty if the country really has no allocations.',
     );
-    return recordFailure({ country, source, family, error, detectedAt });
+    return recordFailure({ country, source, family, error, detectedAt, reason });
   }
 
   // Unchanged coverage: no event. The source may still have re-split the same
@@ -201,8 +201,24 @@ async function runSync({ country, source, family, force, allowEmpty, allowPartia
   };
 }
 
-function recordFailure({ country, source, family, error, detectedAt }) {
+function recordFailure({ country, source, family, error, detectedAt, reason }) {
   log.error(`${country}/v${family}/${source} failed: ${error.message}`);
+  const result = { status: 'error', country, source, family, detectedAt, error: error.message };
+
+  // Opening a page must not write history. Export and map requests sync on
+  // demand for countries nobody watches, so a broken source would otherwise
+  // add an entry every time someone loaded the dashboard.
+  if (reason === 'on-demand') return result;
+
+  // A source that stays broken produces the same error on every check. Record
+  // the first one and stay quiet until it changes or starts working again,
+  // rather than burying real changes under a wall of duplicates.
+  const latest = store.latestEventFor(country, source, family);
+  if (latest && latest.type === 'error' && latest.message === error.message) {
+    log.debug(`${country}/v${family}/${source}: same failure as last time, not recording again`);
+    return result;
+  }
+
   store.recordEvent({
     country,
     source,
@@ -211,7 +227,7 @@ function recordFailure({ country, source, family, error, detectedAt }) {
     detectedAt,
     message: error.message,
   });
-  return { status: 'error', country, source, family, detectedAt, error: error.message };
+  return result;
 }
 
 /** Families a monitor covers — `0` means both. */

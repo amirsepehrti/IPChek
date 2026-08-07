@@ -363,6 +363,17 @@ export function listEvents({ country, source, family, type, limit = 50, offset =
   return { events: rows.map((row) => mapEvent(row)), total };
 }
 
+/** Most recent event for one target, used to collapse repeated failures. */
+export function latestEventFor(country, source, family) {
+  const row = db
+    .prepare(
+      `SELECT * FROM events WHERE country = ? AND source = ? AND family = ?
+       ORDER BY detected_at DESC, id DESC LIMIT 1`,
+    )
+    .get(country, source, family);
+  return row ? mapEvent(row) : null;
+}
+
 export function getEvent(id) {
   const row = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
   return row ? mapEvent(row, { withPrefixes: true }) : null;
