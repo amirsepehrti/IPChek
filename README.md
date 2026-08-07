@@ -294,6 +294,18 @@ Build it yourself with `npm run build:static` (output lands in `_site/`), or pre
 fails if one does not resolve — with no bundler, a missing file would otherwise only show up
 as a blank page.
 
+### Publishing your own copy
+
+The workflow in `.github/workflows/pages.yml` deploys on every push to `main`, but **Pages has
+to be switched on once by hand first**:
+
+> **Settings → Pages → Build and deployment → Source → `GitHub Actions`**
+
+Pick `GitHub Actions`, not `Deploy from a branch` — the site is assembled into `_site/` by the
+workflow and is not committed, so there is no branch to serve it from. Until that is set, the
+deploy fails at `configure-pages` with `Get Pages site failed … Not Found`. The workflow token
+cannot make this change for you; it is only allowed to read the setting.
+
 ---
 
 ## Development
