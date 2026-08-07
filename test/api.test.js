@@ -199,9 +199,43 @@ test('stats summarise what is being tracked', async () => {
   assert.ok(body.ipv4AddressesHuman.length > 0);
 });
 
-test('CORS is open so routers can fetch lists from anywhere', async () => {
+test('CORS is open for reads so routers can fetch lists from anywhere', async () => {
   const { headers } = await get('/api/export/IR/plain?family=4&source=testsrc');
   assert.equal(headers.get('access-control-allow-origin'), '*');
+
+  // A browser preflight for a read is allowed through.
+  const preflight = await fetch(`${base}/api/export/IR/plain`, {
+    method: 'OPTIONS',
+    headers: { origin: 'https://example.com', 'access-control-request-method': 'GET' },
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), '*');
+});
+
+test('CORS does not let a foreign page change anything', async () => {
+  // Without this, any site a user visits could add or delete watches on an
+  // IPChek instance it can reach.
+  for (const method of ['POST', 'PATCH', 'DELETE']) {
+    const preflight = await fetch(`${base}/api/monitors`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://evil.example',
+        'access-control-request-method': method,
+        'access-control-request-headers': 'content-type',
+      },
+    });
+    assert.equal(preflight.status, 403, `${method} preflight must be refused`);
+    assert.equal(preflight.headers.get('access-control-allow-origin'), null,
+      `${method} preflight must not carry a permissive origin`);
+  }
+
+  // The write itself must not advertise itself as cross-origin readable.
+  const written = await fetch(`${base}/api/sync`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+    body: JSON.stringify({ country: 'IT', source: 'testsrc', family: 4 }),
+  });
+  assert.equal(written.headers.get('access-control-allow-origin'), null);
 });
 
 test.after(() => {

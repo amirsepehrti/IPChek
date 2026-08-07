@@ -170,6 +170,21 @@ Timestamps are stored in UTC with millisecond precision and rendered in your loc
 
 ---
 
+## Running it safely
+
+IPChek is built for a trusted network — a LAN, a VPN, or behind your own reverse proxy.
+
+- **Reads are open to any origin, writes are not.** Routers need to fetch export URLs from
+  anywhere, so those carry a wildcard CORS header. Anything that changes state refuses
+  cross-origin browser requests, so a page you happen to visit cannot add or delete watches on
+  an instance it can reach.
+- **Set `API_TOKEN` if the instance is reachable by anyone you do not trust.** It gates every
+  write — watches, manual syncs, test alerts — while leaving exports open so devices keep
+  working.
+- **Do not expose it to the open internet without a reverse proxy** handling TLS, and prefer
+  restricting it by source address as well.
+- The container runs as a non-root user and stores everything under one volume.
+
 ## Configuration
 
 Copy `.env.example` to `.env`. Every value has a working default.
