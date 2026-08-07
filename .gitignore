@@ -11,3 +11,4 @@ npm-debug.log*
 coverage/
 .cache/
 tmp/
+_site/

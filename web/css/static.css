@@ -1,0 +1,60 @@
+/* Additions for the server-free build. The shared design system does the rest. */
+
+.hero {
+  padding: 30px 0 24px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+.hero h1 {
+  font-size: clamp(21px, 4vw, 31px);
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+  max-width: 20ch;
+}
+.hero .lede { margin: 0; max-width: 66ch; }
+
+#no-server-chip { border-color: var(--amber); color: var(--amber); }
+
+.rail-actions .btn { font-size: 12px; }
+
+.source-weight {
+  font-size: 11px;
+  margin: 10px 0 0;
+}
+
+/* The state line above the map: counts, spinner or the failure message. */
+.range-state {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-height: 26px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+.range-state .count {
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.range-state .failed { color: var(--red); }
+
+#map-host { margin-top: 10px; }
+
+.snapshot-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.diff-cols { margin-top: 14px; }
+.diff-cols .output { max-height: 180px; }
+
+@media (max-width: 760px) {
+  .hero { padding: 20px 0 18px; margin-bottom: 20px; }
+  #gh-link { display: none; }
+  #no-server-chip { display: none; }
+}

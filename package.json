@@ -12,7 +12,10 @@
     "dev": "node --watch src/server.js",
     "test": "node --test",
     "sync": "node src/cli.js sync",
-    "export": "node src/cli.js export"
+    "export": "node src/cli.js export",
+    "build:static": "node scripts/build-static.mjs",
+    "check:static": "node scripts/build-static.mjs && node scripts/check-static.mjs",
+    "serve:static": "node scripts/build-static.mjs && npx http-server _site -p 8100 -c-1"
   },
   "keywords": [
     "geoip",

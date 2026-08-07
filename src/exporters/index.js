@@ -3,7 +3,6 @@ import * as linux from './linux.js';
 import * as server from './server.js';
 import * as data from './data.js';
 import { countryInfo } from '../lib/countries.js';
-import { sources } from '../sources/index.js';
 import { safeName } from './util.js';
 
 const ORDER = [
@@ -76,6 +75,10 @@ export function describeExporters() {
  *
  * `nets` and `prefixes` describe the same data; exporters that need masks or
  * ranges use `nets`, the rest just join `prefixes`.
+ *
+ * This module deliberately depends only on `lib/ipnet` and `lib/countries`,
+ * both of which are pure. That keeps the whole exporter layer isomorphic, so
+ * the static browser build renders exactly the same config as the server.
  */
 export function render({
   format,
@@ -84,6 +87,7 @@ export function render({
   nets,
   prefixes,
   source,
+  sourceName = null,
   dataset = null,
   aggregated = true,
   listName = null,
@@ -105,7 +109,7 @@ export function render({
     nets,
     prefixes,
     source,
-    sourceName: sources[source]?.name || source,
+    sourceName: sourceName || source,
     dataset,
     aggregated,
     listName: listName || `${info.code}-v${family}`,

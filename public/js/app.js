@@ -227,8 +227,12 @@ function watchCard(monitor) {
     <div class="watch-stats">
       ${stats}
       <div>
-        <div class="n">${dataset ? escape(dataset.addressCountHuman.split(' ')[0]) : '—'}</div>
-        <div class="k">${escape(t('common.addresses'))}</div>
+        <div class="n ltr">${dataset ? escape(dataset.addressCountParts.value) : '—'}</div>
+        <div class="k">${
+          dataset?.addressCountParts.unit === 'subnets64'
+            ? '<span class="ltr">× /64</span>'
+            : escape(t('common.addresses'))
+        }</div>
       </div>
     </div>
 

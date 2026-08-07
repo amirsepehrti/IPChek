@@ -4,6 +4,7 @@ import {
   aggregate,
   countAddresses,
   describeCount,
+  describeCountParts,
   diffNets,
   formatCidr,
   formatCompact,
@@ -159,4 +160,17 @@ test('counts are humanised without losing precision', () => {
   assert.equal(describeCount(4, 10831872n), '10.8M addresses');
   // IPv6 totals are expressed in /64 subnets, which is the unit people use.
   assert.match(describeCount(6, countAddresses(cidrs(['2001:db8::/32']))), /\/64$/);
+});
+
+test('address counts carry the unit they are counted in', () => {
+  assert.deepEqual(describeCountParts(4, 10831872n), { value: '10.8M', unit: 'addresses' });
+  // A v6 total large enough to hold /64s is reported in /64s, not addresses.
+  const v6 = countAddresses(cidrs(['2001:db8::/32']));
+  assert.deepEqual(describeCountParts(6, v6), { value: '4.2B', unit: 'subnets64' });
+  assert.equal(describeCount(6, v6), '4.2B × /64');
+  // A v6 range smaller than one /64 falls back to counting addresses.
+  assert.deepEqual(describeCountParts(6, countAddresses(cidrs(['2001:db8::/120']))), {
+    value: '256',
+    unit: 'addresses',
+  });
 });

@@ -346,6 +346,20 @@ const STRINGS = {
   },
 };
 
+/**
+ * Register extra strings for a build that has screens the server app does not.
+ * `{ en: {...}, fa: {...} }` is merged in; existing keys win so a caller cannot
+ * silently redefine shared copy.
+ */
+export function extendStrings(additions) {
+  for (const [locale, entries] of Object.entries(additions)) {
+    STRINGS[locale] ||= {};
+    for (const [key, value] of Object.entries(entries)) {
+      if (!(key in STRINGS[locale])) STRINGS[locale][key] = value;
+    }
+  }
+}
+
 export const LOCALES = Object.keys(STRINGS);
 
 let current = localStorage.getItem('ipchek.lang') || (navigator.language?.startsWith('fa') ? 'fa' : 'en');
