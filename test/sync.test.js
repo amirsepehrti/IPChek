@@ -123,19 +123,54 @@ test('an empty response is accepted when explicitly allowed', async () => {
   assert.equal(result.removed, 1);
 });
 
-test('partial source data is refused rather than reported as a withdrawal', async () => {
-  const source = fakeSource('t-partial', ['1.0.0.0/24']);
+test('a partial fetch that would drop blocks is refused', async () => {
+  const source = fakeSource('t-partial', ['1.0.0.0/24', '2.0.0.0/24']);
   await syncTarget({ country: 'IR', source: source.id, family: 4 });
 
-  // One registry of five went down: the country's list would look truncated.
-  source.prefixes = [];
+  // One registry of five went down and the country's list came back truncated.
+  source.prefixes = ['1.0.0.0/24'];
   source.meta = { partial: true, failedRegistries: [{ id: 'apnic', error: 'timeout' }] };
   const result = await syncTarget({ country: 'IR', source: source.id, family: 4 });
 
   assert.equal(result.status, 'error');
-  assert.match(result.error, /partial data/);
-  assert.match(result.error, /apnic/);
-  assert.equal(store.getDataset('IR', source.id, 4).prefixCount, 1);
+  assert.match(result.error, /could not reach apnic/);
+  assert.match(result.error, /drops 1 block/);
+  assert.match(result.error, /ipverse/, 'the error must say how to work around it');
+  assert.equal(store.getDataset('IR', source.id, 4).prefixCount, 2, 'the old list survives');
+});
+
+test('a partial fetch that loses nothing is recorded normally', async () => {
+  // Most countries are served by one registry, so an unreachable APNIC cannot
+  // affect a RIPE country at all. Refusing those syncs would make the whole
+  // source unusable on a network that cannot reach every registry.
+  const source = fakeSource('t-partial-ok', ['1.0.0.0/24']);
+  await syncTarget({ country: 'IR', source: source.id, family: 4 });
+
+  source.meta = { partial: true, failedRegistries: [{ id: 'apnic', error: 'timeout' }] };
+
+  // Same data despite the outage: nothing to report, and no error.
+  const unchanged = await syncTarget({ country: 'IR', source: source.id, family: 4 });
+  assert.equal(unchanged.status, 'unchanged');
+
+  // A block was added while a registry was down: still safe, still recorded.
+  source.prefixes = ['1.0.0.0/24', '3.3.3.0/24'];
+  const changed = await syncTarget({ country: 'IR', source: source.id, family: 4 });
+  assert.equal(changed.status, 'changed');
+  assert.equal(changed.added, 1);
+  assert.equal(changed.removed, 0);
+  assert.equal(store.getDataset('IR', source.id, 4).prefixCount, 2);
+});
+
+test('a partial fetch is never accepted as a first recording', async () => {
+  // With nothing to compare against there is no way to tell a complete list
+  // from a truncated one.
+  const source = fakeSource('t-partial-baseline', ['1.0.0.0/24']);
+  source.meta = { partial: true, failedRegistries: [{ id: 'lacnic', error: 'timeout' }] };
+
+  const result = await syncTarget({ country: 'BR', source: source.id, family: 4 });
+  assert.equal(result.status, 'error');
+  assert.match(result.error, /incomplete baseline/);
+  assert.equal(store.getDataset('BR', source.id, 4), null);
 });
 
 test('a fetch failure is recorded as an error event, not a change', async () => {
