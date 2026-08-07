@@ -1,0 +1,37 @@
+{
+  "name": "ipchek",
+  "version": "1.0.0",
+  "description": "Country IP range aggregator, monitor and firewall/router config generator with a web UI",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "sync": "node src/cli.js sync",
+    "export": "node src/cli.js export"
+  },
+  "keywords": [
+    "geoip",
+    "country-ip",
+    "ip-ranges",
+    "cidr",
+    "firewall",
+    "mikrotik",
+    "routeros",
+    "fortigate",
+    "iptables",
+    "nftables",
+    "pfsense",
+    "rir",
+    "monitoring"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "express": "^5.1.0"
+  }
+}

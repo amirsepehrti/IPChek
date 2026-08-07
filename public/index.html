@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IPChek — country IP ranges for routers and firewalls</title>
+<meta name="description" content="Fetch up-to-date country IP ranges from official sources, watch them for changes, and export ready-to-paste config for MikroTik, FortiGate, Cisco, iptables, nftables and more.">
+<meta name="color-scheme" content="dark light">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23111315'/%3E%3Crect x='2' y='3' width='12' height='2.2' fill='%23ffb020'/%3E%3Crect x='2' y='6.9' width='8' height='2.2' fill='%23ffb020' opacity='.72'/%3E%3Crect x='2' y='10.8' width='4.5' height='2.2' fill='%23ffb020' opacity='.45'/%3E%3C/svg%3E">
+</head>
+<body dir="ltr">
+
+<header class="rail">
+  <a class="brand" href="#overview" aria-label="IPChek">
+    <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="1" y="2.2" width="14" height="2.6" rx="0.6" fill="var(--amber)"/>
+      <rect x="1" y="6.7" width="9.5" height="2.6" rx="0.6" fill="var(--amber)" opacity="0.72"/>
+      <rect x="1" y="11.2" width="5" height="2.6" rx="0.6" fill="var(--amber)" opacity="0.45"/>
+    </svg>
+    <span>IPChek</span>
+  </a>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+
+  <div class="rail-actions">
+    <button id="lang-toggle" class="ghost" title="زبان / Language" aria-label="Switch language">فا</button>
+    <button id="theme-toggle" class="ghost icon" title="Theme" aria-label="Switch theme">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.6v10.8a5.4 5.4 0 010-10.8z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ───────────────────────────────────────────────────────── overview -->
+  <section class="view" id="view-overview" role="tabpanel">
+    <div class="section">
+      <p class="eyebrow" data-t="overview.watching"></p>
+      <div id="watch-cards" class="grid cols-2"></div>
+    </div>
+
+    <div class="section">
+      <p class="eyebrow" data-t="overview.atAGlance"></p>
+      <div class="grid cols-4" id="stat-cards"></div>
+    </div>
+
+    <div class="section">
+      <p class="eyebrow" data-t="overview.recent"></p>
+      <div class="table-wrap" id="recent-events"></div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────────────────── countries -->
+  <section class="view" id="view-countries" role="tabpanel">
+    <h1 data-t="countries.title"></h1>
+    <p class="lede" data-t="countries.lede"></p>
+
+    <div class="toolbar section">
+      <label class="field grow">
+        <span data-t="countries.search"></span>
+        <input id="country-search" type="search" autocomplete="off" data-t-ph="countries.searchPlaceholder">
+      </label>
+      <label class="field">
+        <span data-t="countries.region"></span>
+        <select id="continent-filter"></select>
+      </label>
+      <label class="field">
+        <span data-t="common.source"></span>
+        <select id="countries-source"></select>
+      </label>
+      <label class="check" style="padding-bottom:7px">
+        <input type="checkbox" id="only-watched">
+        <span data-t="countries.onlyWatched"></span>
+      </label>
+    </div>
+
+    <div id="country-grid" class="country-grid"></div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────── export -->
+  <section class="view" id="view-export" role="tabpanel">
+    <h1 data-t="export.title"></h1>
+    <p class="lede" data-t="export.lede"></p>
+
+    <div class="grid cols-2" style="align-items:start">
+      <div class="panel stack">
+        <label class="field">
+          <span data-t="common.country"></span>
+          <select id="ex-country"></select>
+        </label>
+
+        <div class="row" style="gap:12px">
+          <label class="field" style="flex:1">
+            <span data-t="common.family"></span>
+            <select id="ex-family">
+              <option value="4">IPv4</option>
+              <option value="6">IPv6</option>
+            </select>
+          </label>
+          <label class="field" style="flex:1">
+            <span data-t="common.source"></span>
+            <select id="ex-source"></select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span data-t="export.format"></span>
+          <select id="ex-format"></select>
+        </label>
+
+        <div class="row" style="gap:12px">
+          <label class="field" style="flex:1">
+            <span data-t="export.listName"></span>
+            <input id="ex-list" autocomplete="off" placeholder="IR-v4">
+          </label>
+          <label class="field" style="flex:1">
+            <span data-t="export.action"></span>
+            <select id="ex-action">
+              <option value="block" data-t="export.actionBlock"></option>
+              <option value="allow" data-t="export.actionAllow"></option>
+            </select>
+          </label>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="ex-aggregate" checked>
+          <span data-t="export.aggregate"></span>
+        </label>
+
+        <p class="note" id="ex-note"></p>
+
+        <div class="row">
+          <button class="primary" id="ex-download" data-t="export.download"></button>
+          <button id="ex-copy" data-t="export.copy"></button>
+          <button class="ghost" id="ex-refresh" data-t="export.refresh"></button>
+        </div>
+
+        <div>
+          <span class="chip" data-t="export.liveUrl"></span>
+          <div class="url-row" style="margin-top:6px">
+            <code id="ex-url"></code>
+            <button class="ghost icon" id="ex-url-copy" data-t="export.copyShort"></button>
+          </div>
+          <p class="muted" style="font-size:11px;margin:6px 0 0" data-t="export.liveUrlHint"></p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2 data-t="export.preview"></h2>
+          <span class="muted" id="ex-count"></span>
+        </div>
+        <pre class="output" id="ex-output"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────── monitors -->
+  <section class="view" id="view-monitors" role="tabpanel">
+    <h1 data-t="monitors.title"></h1>
+    <p class="lede" data-t="monitors.lede"></p>
+
+    <div class="panel section">
+      <p class="eyebrow" data-t="monitors.addTitle"></p>
+      <div class="toolbar">
+        <label class="field grow">
+          <span data-t="common.country"></span>
+          <select id="mon-country"></select>
+        </label>
+        <label class="field">
+          <span data-t="common.family"></span>
+          <select id="mon-family">
+            <option value="0" data-t="common.bothFamilies"></option>
+            <option value="4">IPv4</option>
+            <option value="6">IPv6</option>
+          </select>
+        </label>
+        <label class="field">
+          <span data-t="common.source"></span>
+          <select id="mon-source"></select>
+        </label>
+        <label class="field">
+          <span data-t="monitors.every"></span>
+          <select id="mon-interval"></select>
+        </label>
+        <button class="primary" id="mon-add" data-t="monitors.add"></button>
+      </div>
+    </div>
+
+    <div id="monitor-list"></div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────── changes -->
+  <section class="view" id="view-changes" role="tabpanel">
+    <h1 data-t="changes.title"></h1>
+    <p class="lede" data-t="changes.lede"></p>
+
+    <div class="toolbar section">
+      <label class="field">
+        <span data-t="common.country"></span>
+        <select id="ev-country"></select>
+      </label>
+      <label class="field">
+        <span data-t="changes.type"></span>
+        <select id="ev-type">
+          <option value="" data-t="changes.allTypes"></option>
+          <option value="change" data-t="changes.typeChange"></option>
+          <option value="baseline" data-t="changes.typeBaseline"></option>
+          <option value="error" data-t="changes.typeError"></option>
+        </select>
+      </label>
+      <div class="right">
+        <button class="ghost" id="ev-refresh" data-t="changes.refresh"></button>
+      </div>
+    </div>
+
+    <div class="table-wrap" id="event-list"></div>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button id="ev-more" data-t="changes.loadMore"></button>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────── settings -->
+  <section class="view" id="view-about" role="tabpanel">
+    <h1 data-t="about.title"></h1>
+    <p class="lede" data-t="about.lede"></p>
+    <div class="grid cols-2" id="about-panels"></div>
+  </section>
+
+</main>
+
+<footer>
+  <span class="ltr">IPChek <span id="version"></span></span> ·
+  <a href="https://github.com/amirsepehrti/IPChek" target="_blank" rel="noopener">GitHub</a> ·
+  <span data-t="about.footerNote"></span>
+</footer>
+
+<dialog id="detail"></dialog>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

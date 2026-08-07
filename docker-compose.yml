@@ -1,0 +1,25 @@
+services:
+  ipchek:
+    build: .
+    image: ipchek:latest
+    container_name: ipchek
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ipchek-data:/data
+    environment:
+      # Where the ranges come from: rir | ipverse | ipdeny | dbip
+      SOURCE: rir
+      # How often watched countries are re-checked, in minutes
+      SYNC_INTERVAL_MINUTES: 360
+      SYNC_ON_START: "true"
+      # Uncomment to require a token for anything that changes state.
+      # API_TOKEN: change-me
+      # Uncomment to get alerts when a watched country's ranges move.
+      # NOTIFY_TELEGRAM_BOT_TOKEN: ""
+      # NOTIFY_TELEGRAM_CHAT_ID: ""
+      # NOTIFY_WEBHOOK_URL: ""
+
+volumes:
+  ipchek-data:
