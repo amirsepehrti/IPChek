@@ -32,13 +32,14 @@ jobs:
       - name: Check the server boots and serves the API
         run: |
           SYNC_ON_START=false SYNC_INTERVAL_MINUTES=0 PORT=8123 node src/server.js &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           for i in $(seq 1 20); do
             sleep 1
             curl -fsS http://127.0.0.1:8123/api/health && break
           done
           curl -fsS http://127.0.0.1:8123/api/meta > /dev/null
           curl -fsS http://127.0.0.1:8123/ | grep -q IPChek
-          kill %1
 
   docker:
     name: Build the container image
