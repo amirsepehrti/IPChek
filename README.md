@@ -9,6 +9,9 @@ a FortiGate threat feed, an nftables set, a pfSense alias, or any of 26 formats.
 
 Everything runs from one Node process with a web UI. No account, no external service.
 
+**Want the config without installing anything? → [amirsepehrti.github.io/IPChek](https://amirsepehrti.github.io/IPChek/)**
+— the same exporters, running entirely in your browser.
+
 ![IPChek overview](docs/screenshot-overview.png)
 
 ---
@@ -241,6 +244,33 @@ CSS, served straight from `public/`.
 
 ---
 
+## The browser-only version
+
+[amirsepehrti.github.io/IPChek](https://amirsepehrti.github.io/IPChek/) is a build with no
+backend at all. It fetches the ranges straight from the source, does the CIDR maths and
+renders the config in the page — nothing is uploaded, and there is no server to run.
+
+It imports the very same `src/exporters/` and `src/lib/` modules the server does, so the
+config it produces is identical. What it cannot do is anything that needs a process running
+while you are away:
+
+| | Hosted page | Self-hosted |
+| --- | --- | --- |
+| All 26 device formats | yes | yes |
+| Fetch current ranges | yes | yes |
+| Compare against a saved list | in your browser, when you open the page | on a schedule |
+| Alerts to Telegram, Slack, webhook | no | yes |
+| Change history across devices | no | yes |
+| A stable URL your router can poll | no | yes |
+| The RIR delegation files as a source | no — the registry servers send no CORS headers | yes |
+
+Build it yourself with `npm run build:static` (output lands in `_site/`), or preview it with
+`npm run serve:static`. `scripts/check-static.mjs` walks every import in the assembled site and
+fails if one does not resolve — with no bundler, a missing file would otherwise only show up
+as a blank page.
+
+---
+
 ## Development
 
 ```bash
@@ -283,6 +313,10 @@ cd IPChek && npm install && npm start
 ```
 
 سپس <http://localhost:8080> را باز کنید و از دکمه «فا» زبان را فارسی کنید.
+
+اگر فقط خروجی می‌خواهید و حوصله نصب ندارید، نسخه‌ی بدون سرور آماده است:
+**[amirsepehrti.github.io/IPChek](https://amirsepehrti.github.io/IPChek/)** — همان قالب‌های خروجی،
+تماماً داخل مرورگر شما. برای پایش زمان‌بندی‌شده و هشدار، نسخه‌ی خودمیزبان بالا را اجرا کنید.
 
 نکته‌ها:
 

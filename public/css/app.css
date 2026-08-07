@@ -358,8 +358,11 @@ body[dir="rtl"] label.field > span { letter-spacing: 0; text-transform: none; fo
 .check { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12px; }
 .check input { width: auto; accent-color: var(--amber); }
 
-.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
-.toolbar .grow { flex: 1; min-width: 160px; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+/* A field's label is usually wider than its control, so size fields to the
+   label — otherwise two labels run into each other while the inputs look fine. */
+.toolbar .field { min-width: 174px; }
+.toolbar .grow { flex: 1; min-width: 200px; }
 
 /* ------------------------------------------------------------------- chips */
 

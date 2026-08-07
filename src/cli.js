@@ -10,7 +10,7 @@
 import { normalizeCode, isValidCode, countryInfo } from './lib/countries.js';
 import { getPrefixes, syncTarget, familiesOf } from './core/sync.js';
 import { render, describeExporters } from './exporters/index.js';
-import { describeSources } from './sources/index.js';
+import { describeSources, getSource } from './sources/index.js';
 import * as store from './db/index.js';
 import config from './config.js';
 
@@ -84,6 +84,7 @@ switch (command) {
       nets,
       prefixes,
       source,
+      sourceName: getSource(source).name,
       dataset,
       aggregated,
       listName: flags.list || null,

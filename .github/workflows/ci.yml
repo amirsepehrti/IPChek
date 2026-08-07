@@ -41,6 +41,30 @@ jobs:
           curl -fsS http://127.0.0.1:8123/api/meta > /dev/null
           curl -fsS http://127.0.0.1:8123/ | grep -q IPChek
 
+  static:
+    name: Verify the static build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Assemble and check
+        run: npm run check:static
+      - name: Check the page loads its entry module
+        run: |
+          npx --yes http-server _site -p 8100 -c-1 --silent &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 20); do
+            sleep 1
+            curl -fsS http://127.0.0.1:8100/ > /dev/null && break
+          done
+          curl -fsS http://127.0.0.1:8100/ | grep -q 'js/app.js'
+          curl -fsS http://127.0.0.1:8100/js/app.js > /dev/null
+          curl -fsS http://127.0.0.1:8100/src/exporters/index.js > /dev/null
+          curl -fsS http://127.0.0.1:8100/src/lib/ipnet.js > /dev/null
+
   docker:
     name: Build the container image
     runs-on: ubuntu-latest

@@ -341,15 +341,23 @@ export function netContains(net, addr) {
   return addr.value >= range.start && addr.value <= range.end;
 }
 
-/** Human readable address count ("4.2M addresses" / "1.2K /64 subnets"). */
-export function describeCount(version, total) {
+/**
+ * Split a total into a compact number and the unit it is counted in.
+ * IPv6 totals are astronomical, so anything holding at least one /64 is
+ * reported in /64 subnets — the unit people actually reason about.
+ */
+export function describeCountParts(version, total) {
   if (version === 6) {
-    // IPv6 counts are astronomical; express them in /64 subnets instead.
     const subnets = total >> 64n;
-    if (subnets > 0n) return `${formatCompact(subnets)} × /64`;
-    return `${formatCompact(total)} addresses`;
+    if (subnets > 0n) return { value: formatCompact(subnets), unit: 'subnets64' };
   }
-  return `${formatCompact(total)} addresses`;
+  return { value: formatCompact(total), unit: 'addresses' };
+}
+
+/** Human readable address count ("4.2M addresses" / "1.2K × /64"). */
+export function describeCount(version, total) {
+  const { value, unit } = describeCountParts(version, total);
+  return unit === 'subnets64' ? `${value} × /64` : `${value} addresses`;
 }
 
 export function formatCompact(value) {

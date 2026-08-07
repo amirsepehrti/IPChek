@@ -2,12 +2,12 @@ import express from 'express';
 import config from '../config.js';
 import * as store from '../db/index.js';
 import { allCountries, countryInfo, isValidCode, normalizeCode, CONTINENT_NAMES, POPULAR } from '../lib/countries.js';
-import { describeSources, sourceIds } from '../sources/index.js';
+import { describeSources, getSource, sourceIds } from '../sources/index.js';
 import { CATEGORIES, describeExporters, render } from '../exporters/index.js';
 import { getPrefixes, syncMonitor, syncTarget, familiesOf } from '../core/sync.js';
 import { schedulerStatus } from '../core/scheduler.js';
 import { configuredChannels, sendTestNotification } from '../notify/index.js';
-import { countAddresses, describeCount } from '../lib/ipnet.js';
+import { countAddresses, describeCount, describeCountParts } from '../lib/ipnet.js';
 import { buildSpaceMap } from '../lib/spacemap.js';
 
 export const router = express.Router();
@@ -150,6 +150,7 @@ router.get('/countries/:code', async (req, res) => {
       datasets[family] = {
         ...summary,
         addressCountHuman: describeCount(family, BigInt(summary.addressCount)),
+        addressCountParts: describeCountParts(family, BigInt(summary.addressCount)),
       };
     }
   }
@@ -216,6 +217,7 @@ async function handleExport(req, res) {
     nets,
     prefixes,
     source,
+    sourceName: getSource(source).name,
     dataset,
     aggregated,
     listName: req.query.list ? String(req.query.list).slice(0, 60) : null,
@@ -257,6 +259,7 @@ router.get('/preview/:code', async (req, res) => {
     nets,
     prefixes,
     source,
+    sourceName: getSource(source).name,
     dataset,
     aggregated,
     listName: req.query.list ? String(req.query.list).slice(0, 60) : null,
@@ -315,7 +318,11 @@ router.get('/monitors', (req, res) => {
     for (const family of familiesOf(monitor.family)) {
       const summary = store.getDatasetSummary(monitor.country, monitor.source, family);
       if (summary) {
-        datasets[family] = { ...summary, addressCountHuman: describeCount(family, BigInt(summary.addressCount)) };
+        datasets[family] = {
+          ...summary,
+          addressCountHuman: describeCount(family, BigInt(summary.addressCount)),
+          addressCountParts: describeCountParts(family, BigInt(summary.addressCount)),
+        };
       }
     }
     return { ...monitor, name: info.name, nameFa: info.nameFa, flag: info.flag, datasets };
