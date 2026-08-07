@@ -254,3 +254,43 @@ test('events are returned newest first and can be filtered', async () => {
 test.after(() => {
   fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true });
 });
+
+test('a source that stays broken does not bury the history in duplicates', async () => {
+  const source = fakeSource('t-spam', ['1.0.0.0/24']);
+  await syncTarget({ country: 'IR', source: source.id, family: 4, reason: 'scheduler' });
+
+  source.error = 'connection refused';
+  for (let i = 0; i < 5; i++) {
+    await syncTarget({ country: 'IR', source: source.id, family: 4, reason: 'scheduler' });
+  }
+
+  const errors = store.listEvents({ country: 'IR', source: source.id, type: 'error' });
+  assert.equal(errors.total, 1, 'five identical failures should leave one entry');
+
+  // A different failure is still worth recording.
+  source.error = 'certificate expired';
+  await syncTarget({ country: 'IR', source: source.id, family: 4, reason: 'scheduler' });
+  assert.equal(store.listEvents({ country: 'IR', source: source.id, type: 'error' }).total, 2);
+
+  // And once it recovers, the next failure is news again.
+  source.error = null;
+  source.prefixes = ['1.0.0.0/24', '2.0.0.0/24'];
+  await syncTarget({ country: 'IR', source: source.id, family: 4, reason: 'scheduler' });
+  source.error = 'certificate expired';
+  await syncTarget({ country: 'IR', source: source.id, family: 4, reason: 'scheduler' });
+  assert.equal(store.listEvents({ country: 'IR', source: source.id, type: 'error' }).total, 3);
+});
+
+test('loading a page never writes to the change history', async () => {
+  // Export and map requests sync on demand for countries nobody watches. A
+  // broken source would otherwise add an entry every time the dashboard loaded.
+  const source = fakeSource('t-ondemand', ['1.0.0.0/24']);
+  source.error = 'connection refused';
+
+  for (let i = 0; i < 3; i++) {
+    const result = await syncTarget({ country: 'PL', source: source.id, family: 4, reason: 'on-demand' });
+    assert.equal(result.status, 'error', 'the caller still learns it failed');
+    assert.match(result.error, /connection refused/);
+  }
+  assert.equal(store.listEvents({ country: 'PL', source: source.id }).total, 0);
+});
