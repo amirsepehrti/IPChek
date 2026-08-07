@@ -32,11 +32,13 @@ jobs:
       - name: Check the assembled imports resolve
         run: node scripts/check-static.mjs
 
-      # Turns Pages on the first time this runs, so there is no manual step in
-      # repository settings. Needs Pages to be available on the account's plan.
+      # Pages has to be switched on once by hand, under
+      # Settings → Pages → Source → GitHub Actions. This step reads that
+      # configuration; it cannot create it. `enablement: true` was tried and the
+      # workflow token is not allowed to call the create-a-Pages-site API, which
+      # fails with a "Resource not accessible by integration" that says nothing
+      # about the actual missing step.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
